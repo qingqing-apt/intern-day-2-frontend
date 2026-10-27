@@ -131,6 +131,17 @@ docker compose logs --tail=100
 
 > 开发容器实证截图见 [`docs/screenshots/devcontainer.png`](docs/screenshots/devcontainer.png)：窗口标题与状态栏为 `开发容器: intern-day-2-frontend`，终端提示符 `root@4759e000fcd7:/workspaces/intern-day-2-frontend`。
 
+**三、复现验证（在另一个目录克隆后按本文档启动）**
+
+| 步骤 | 结果 |
+|---|---|
+| 克隆后文件完整性 | `pnpm-lock.yaml`、`.devcontainer`、`.github`、`docs` 均来自版本库，不依赖原目录未提交文件 |
+| `docker-compose up --build -d` | 构建并启动成功，容器 `intern-day-2-frontend_web_1`，0.0.0.0:5173 |
+| 页面访问 | HTTP 200 |
+| 与后端联调 | 登录接口返回 token，页面正常显示指标 |
+
+> 注意：`pnpm-lock.yaml` 未入库时容器构建会直接失败（`COPY failed: pnpm-lock.yaml`），因此锁文件必须提交——这也是 CI 与镜像构建一致性的前提。
+
 > 开发容器内直接跑源码时没有构建期生成的 `.env`，需要指定后端地址：`VITE_API_BASE_URL=http://10.0.11.100:8000`（可写入本地 `.env.local`，已被 `.gitignore` 的 `*.local` 忽略）。
 
 ## 已知问题与限制
