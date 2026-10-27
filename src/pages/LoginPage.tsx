@@ -1,12 +1,19 @@
 import { FormEvent, useState } from "react";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 
 export function LoginPage() {
   const { login, status } = useAuth();
+  const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // 已登录用户访问登录页时直接进入功能页
+  if (status === "authed") {
+    return <Navigate to="/" replace />;
+  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -20,6 +27,7 @@ export function LoginPage() {
     setSubmitting(true);
     try {
       await login(username.trim(), password);
+      navigate("/", { replace: true }); // 登录成功后进入功能页
     } catch (err) {
       setError(err instanceof Error ? err.message : "登录失败，请稍后重试");
     } finally {
