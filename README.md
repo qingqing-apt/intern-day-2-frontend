@@ -127,6 +127,9 @@ docker compose logs --tail=100
 | postCreate | `git config safe.directory` + `corepack enable` + `pnpm install` 自动完成 |
 | 容器内构建 | `pnpm build` 成功产出 dist |
 | 容器内启动 | `pnpm dev` 正常，端口 5173 通过 VS Code 隧道转发到本机浏览器 |
+| 容器 ID 印证 | 容器内 `cat /etc/hostname` → `4759e000fcd7`；服务器 `docker ps` 同一 ID 对应容器 `keen_germain` |
+
+> 开发容器实证截图见 [`docs/screenshots/devcontainer.png`](docs/screenshots/devcontainer.png)：窗口标题与状态栏为 `开发容器: intern-day-2-frontend`，终端提示符 `root@4759e000fcd7:/workspaces/intern-day-2-frontend`。
 
 > 开发容器内直接跑源码时没有构建期生成的 `.env`，需要指定后端地址：`VITE_API_BASE_URL=http://10.0.11.100:8000`（可写入本地 `.env.local`，已被 `.gitignore` 的 `*.local` 忽略）。
 
