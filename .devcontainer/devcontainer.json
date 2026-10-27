@@ -1,0 +1,15 @@
+{
+  "name": "intern-day-2-frontend",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": ["dbaeumer.vscode-eslint", "esbenp.prettier-vscode"]
+    }
+  },
+  "forwardPorts": [5173],
+  "postCreateCommand": "corepack enable && pnpm install",
+  "remoteUser": "root"
+}
