@@ -10,6 +10,6 @@
     }
   },
   "forwardPorts": [5173],
-  "postCreateCommand": "corepack enable && pnpm install",
+  "postCreateCommand": "git config --global --add safe.directory ${containerWorkspaceFolder} && corepack enable && pnpm install",
   "remoteUser": "root"
 }

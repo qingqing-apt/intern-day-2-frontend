@@ -9,22 +9,27 @@ export class ApiError extends Error {
   }
 }
 
-function authHeaders(): Record<string, string> {
-  const token = localStorage.getItem("token");
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${BASE}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...authHeaders(),
-      ...options.headers,
-    },
-  });
+  // 只有携带了令牌的请求，401 才代表"凭证失效"；
+  // 登录接口本身返回 401 代表"账号或密码错误"，应透传后端提示。
+  const token = localStorage.getItem("token");
 
-  if (response.status === 401) {
+  let response: Response;
+  try {
+    response = await fetch(`${BASE}${path}`, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...options.headers,
+      },
+    });
+  } catch {
+    // 网络层失败（服务未启动、断网、跨域被拦截等）
+    throw new ApiError(0, "无法连接后端服务，请检查服务是否已启动");
+  }
+
+  if (response.status === 401 && token) {
     // 凭证失效：清理本地状态并通知全局，由路由守卫负责跳转登录页
     localStorage.removeItem("token");
     window.dispatchEvent(new Event("unauthorized"));

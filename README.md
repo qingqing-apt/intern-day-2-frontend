@@ -17,13 +17,13 @@
 
 ## 开发环境进入方式
 
-本仓库开发容器基于第一天的 `git-base:1.1` 镜像构建（已内置 git 2.34.1 与团队 GitHub 只读密钥），在上层追加 Node.js 20 与 pnpm 9（版本在 `.devcontainer/Dockerfile` 中用 ARG 固定）。
+本仓库开发容器基于官方 `node:20-slim` 构建（见 `.devcontainer/Dockerfile`），容器内安装 git、openssh-client 与 pnpm 9.15.0，**不依赖第一天的基础镜像**，任何机器可直接构建。
 
 前置条件：
 
-1. 本机已导入基础镜像：`docker load -i git-base-1.1.tar.gz`
+1. 本机已安装并启动 Docker
 2. VS Code 已安装 Dev Containers 扩展
-3. 在容器内配置自己的 git 身份与推送密钥（基础镜像内置的密钥只读，不能 push）：
+3. 在容器内配置自己的 git 身份与推送密钥：
 
 ```bash
 git config --global user.name  "你的名字"
@@ -55,7 +55,7 @@ docker compose logs --tail=100
 - 联调方式：**浏览器直连宿主机端口**。页面走 `http://localhost:5173`，API 请求走 `http://localhost:8000`（后端 Compose 映射端口）；两个 Compose 项目互相独立，不共享服务发现，因此 API 基地址必须使用宿主机视角地址，不能写容器名
 - API 基地址通过构建参数注入：`compose.yaml` 的 `VITE_API_BASE_URL`（默认 `http://localhost:8000`），镜像构建时写入容器内 `.env` 供 Vite 读取
 - 后端 CORS 已放行 `http://localhost:5173`
-- 实际联调使用的双方分支/提交版本：`feat/login-and-custom-feature`（联调时填写具体 commit）
+- 实际联调使用的双方分支/提交版本：前端 `feat/login-and-custom-feature`（`7b4f039`）× 后端同分支（`1806934`）
 
 ## 访问地址
 
@@ -83,7 +83,66 @@ docker compose logs --tail=100
 
 ## 自测记录
 
-（联调完成后填写：正常登录 / 错误密码统一提示 / 未登录访问功能页 / 伪造与过期凭证 / 退出后旧凭证 / 后端暂停时的失败提示 / 重建容器后复现）
+联调环境：2026-10-27，前端 `feat/login-and-custom-feature`（`7b4f039`）× 后端同分支（`1806934`），部署在 192.0.2.10，浏览器 Edge。
+
+| 场景 | 操作 | 结果 |
+|---|---|---|
+| 正常登录 | `intern` / `intern-pass-123` | 通过，跳转功能页并显示实时指标 |
+| 空字段提交 | 账号密码留空直接提交 | 页面提示「请输入账号和密码」，不发起请求 |
+| 错误密码 | 输入错误密码 | 页面提示「账号或密码错误」（不再误报为凭证失效） |
+| 未登录访问功能页 | 直接访问 `/` | 重定向到 `/login` |
+| 伪造凭证 | 浏览器写入无效 token 后刷新 | 清理令牌并回到登录页 |
+| 凭证过期 | 后端以 `SESSION_TTL_MINUTES=1` 启动，登录后等待 65 秒 | 下一次请求返回 401，清理会话并回登录页 |
+| 退出登录 | 点击「退出登录」 | 后端删除会话记录，旧令牌访问返回 401 |
+| 后端暂停 | 停掉后端容器 | 顶部出现「无法连接后端服务，请检查服务是否已启动」，保留最后一次数据不清空 |
+| 后端恢复 | 重新启动后端容器 | 横幅自动消失，数据继续刷新，无需手动刷新页面 |
+| 容器重建 | 删除并重建前后端容器 | 按本文步骤可复现；账号由种子数据重建 |
+
+自测中发现并修复：登录成功后未跳转功能页、携带令牌的 401 与登录失败混为一谈、网络异常提示为英文原文。
+
+## 容器与部署验证
+
+在 Linux 服务器（192.0.2.10，本文档使用的示例地址）上完成，两条路径都实测过。
+
+**一、运行时容器（docker compose）**
+
+| 项目 | 结果 |
+|---|---|
+| 启动命令 | `docker-compose up -d --build`（项目根目录） |
+| 镜像 | `intern-day-2-frontend_web`（412MB） |
+| 容器 | `intern-day-2-frontend_web_1`，端口 0.0.0.0:5173→5173 |
+| 页面访问 | `http://192.0.2.10:5173` 返回 200，登录后正常显示仪表盘 |
+| 后端联通 | 页面调用 `http://192.0.2.10:8000` 成功（CORS 放行 5173） |
+
+**二、开发容器（VS Code Dev Containers）**
+
+| 项目 | 结果 |
+|---|---|
+| 进入方式 | VS Code `Remote-SSH` 连接服务器 → 打开仓库 → `Reopen in Container` |
+| 开发镜像 | 由 `.devcontainer/Dockerfile` 构建（474MB），不依赖第一天镜像 |
+| 状态栏标识 | `开发容器: intern-day-2-frontend @ day2-server` |
+| 容器内 git | 2.39.5 |
+| 容器内 node / pnpm | v20.20.2 / 9.15.0 |
+| 容器内工作目录 | `/workspaces/intern-day-2-frontend`（挂载自服务器仓库目录） |
+| postCreate | `git config safe.directory` + `corepack enable` + `pnpm install` 自动完成 |
+| 容器内构建 | `pnpm build` 成功产出 dist |
+| 容器内启动 | `pnpm dev` 正常，端口 5173 通过 VS Code 隧道转发到本机浏览器 |
+| 容器 ID 印证 | 容器内 `cat /etc/hostname` → `4759e000fcd7`；服务器 `docker ps` 同一 ID 对应容器 `keen_germain` |
+
+> 开发容器实证截图见 [`docs/screenshots/devcontainer.png`](docs/screenshots/devcontainer.png)：窗口标题与状态栏为 `开发容器: intern-day-2-frontend`，终端提示符 `root@4759e000fcd7:/workspaces/intern-day-2-frontend`。
+
+**三、复现验证（在另一个目录克隆后按本文档启动）**
+
+| 步骤 | 结果 |
+|---|---|
+| 克隆后文件完整性 | `pnpm-lock.yaml`、`.devcontainer`、`.github`、`docs` 均来自版本库，不依赖原目录未提交文件 |
+| `docker-compose up --build -d` | 构建并启动成功，容器 `intern-day-2-frontend_web_1`，0.0.0.0:5173 |
+| 页面访问 | HTTP 200 |
+| 与后端联调 | 登录接口返回 token，页面正常显示指标 |
+
+> 注意：`pnpm-lock.yaml` 未入库时容器构建会直接失败（`COPY failed: pnpm-lock.yaml`），因此锁文件必须提交——这也是 CI 与镜像构建一致性的前提。
+
+> 开发容器内直接跑源码时没有构建期生成的 `.env`，需要指定后端地址：`VITE_API_BASE_URL=http://192.0.2.10:8000`（可写入本地 `.env.local`，已被 `.gitignore` 的 `*.local` 忽略）。
 
 ## 已知问题与限制
 
