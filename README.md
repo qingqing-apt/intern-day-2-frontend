@@ -83,7 +83,7 @@ docker compose logs --tail=100
 
 ## 自测记录
 
-联调环境：2026-10-27，前端 `feat/login-and-custom-feature`（`7b4f039`）× 后端同分支（`1806934`），部署在 10.0.11.100，浏览器 Edge。
+联调环境：2026-10-27，前端 `feat/login-and-custom-feature`（`7b4f039`）× 后端同分支（`1806934`），部署在 192.0.2.10，浏览器 Edge。
 
 | 场景 | 操作 | 结果 |
 |---|---|---|
@@ -102,7 +102,7 @@ docker compose logs --tail=100
 
 ## 容器与部署验证
 
-在 Linux 服务器（10.0.11.100）上完成，两条路径都实测过。
+在 Linux 服务器（192.0.2.10，本文档使用的示例地址）上完成，两条路径都实测过。
 
 **一、运行时容器（docker compose）**
 
@@ -111,8 +111,8 @@ docker compose logs --tail=100
 | 启动命令 | `docker-compose up -d --build`（项目根目录） |
 | 镜像 | `intern-day-2-frontend_web`（412MB） |
 | 容器 | `intern-day-2-frontend_web_1`，端口 0.0.0.0:5173→5173 |
-| 页面访问 | `http://10.0.11.100:5173` 返回 200，登录后正常显示仪表盘 |
-| 后端联通 | 页面调用 `http://10.0.11.100:8000` 成功（CORS 放行 5173） |
+| 页面访问 | `http://192.0.2.10:5173` 返回 200，登录后正常显示仪表盘 |
+| 后端联通 | 页面调用 `http://192.0.2.10:8000` 成功（CORS 放行 5173） |
 
 **二、开发容器（VS Code Dev Containers）**
 
@@ -142,7 +142,7 @@ docker compose logs --tail=100
 
 > 注意：`pnpm-lock.yaml` 未入库时容器构建会直接失败（`COPY failed: pnpm-lock.yaml`），因此锁文件必须提交——这也是 CI 与镜像构建一致性的前提。
 
-> 开发容器内直接跑源码时没有构建期生成的 `.env`，需要指定后端地址：`VITE_API_BASE_URL=http://10.0.11.100:8000`（可写入本地 `.env.local`，已被 `.gitignore` 的 `*.local` 忽略）。
+> 开发容器内直接跑源码时没有构建期生成的 `.env`，需要指定后端地址：`VITE_API_BASE_URL=http://192.0.2.10:8000`（可写入本地 `.env.local`，已被 `.gitignore` 的 `*.local` 忽略）。
 
 ## 已知问题与限制
 
