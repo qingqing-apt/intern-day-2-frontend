@@ -100,6 +100,36 @@ docker compose logs --tail=100
 
 自测中发现并修复：登录成功后未跳转功能页、携带令牌的 401 与登录失败混为一谈、网络异常提示为英文原文。
 
+## 容器与部署验证
+
+在 Linux 服务器（10.0.11.100）上完成，两条路径都实测过。
+
+**一、运行时容器（docker compose）**
+
+| 项目 | 结果 |
+|---|---|
+| 启动命令 | `docker-compose up -d --build`（项目根目录） |
+| 镜像 | `intern-day-2-frontend_web`（412MB） |
+| 容器 | `intern-day-2-frontend_web_1`，端口 0.0.0.0:5173→5173 |
+| 页面访问 | `http://10.0.11.100:5173` 返回 200，登录后正常显示仪表盘 |
+| 后端联通 | 页面调用 `http://10.0.11.100:8000` 成功（CORS 放行 5173） |
+
+**二、开发容器（VS Code Dev Containers）**
+
+| 项目 | 结果 |
+|---|---|
+| 进入方式 | VS Code `Remote-SSH` 连接服务器 → 打开仓库 → `Reopen in Container` |
+| 开发镜像 | 由 `.devcontainer/Dockerfile` 构建（474MB），不依赖第一天镜像 |
+| 状态栏标识 | `开发容器: intern-day-2-frontend @ day2-server` |
+| 容器内 git | 2.39.5 |
+| 容器内 node / pnpm | v20.20.2 / 9.15.0 |
+| 容器内工作目录 | `/workspaces/intern-day-2-frontend`（挂载自服务器仓库目录） |
+| postCreate | `git config safe.directory` + `corepack enable` + `pnpm install` 自动完成 |
+| 容器内构建 | `pnpm build` 成功产出 dist |
+| 容器内启动 | `pnpm dev` 正常，端口 5173 通过 VS Code 隧道转发到本机浏览器 |
+
+> 开发容器内直接跑源码时没有构建期生成的 `.env`，需要指定后端地址：`VITE_API_BASE_URL=http://10.0.11.100:8000`（可写入本地 `.env.local`，已被 `.gitignore` 的 `*.local` 忽略）。
+
 ## 已知问题与限制
 
 - 练习用 Vite 开发服务器启动，未做生产构建部署
